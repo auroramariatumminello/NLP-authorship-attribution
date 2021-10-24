@@ -2,14 +2,17 @@
 import sys
 import os
 import re
-from stop_words import get_stop_words
+# from stop_words import get_stop_words
 from nltk.corpus import stopwords
+# import nltk
+# nltk.download('stopwords')
 
 # Set of stopwords
 stop_words = list(stopwords.words('english')) #About 150 stopwords
+DEFAULT_TRAINING_PATH = "data/american/training/"
 
 # Function to get, for each file inside the training directory, author, length and dictionary with words
-def get_documents(feature_type="words", ngram_size=None, training_path = "data/american/training/"):
+def get_documents(feature_type="words", ngram_size=None, training_path = DEFAULT_TRAINING_PATH):
     documents = {}
     # Scanning all files inside the training path
     files = [os.path.join(training_path, f)
@@ -96,7 +99,6 @@ def process_words(filename):
             words[w] = 1
     return author, len(words), words
 
-
 # Create dictionary of ngrams, where n is inserted by the user, whose
 # keys are ngrams and values are their counter
 def process_ngrams(filename, n=3):
@@ -112,6 +114,5 @@ def process_ngrams(filename, n=3):
             ngrams[ngram] = 1
     return author, len(ngrams), ngrams
 #%%
-process_words("data/american/test/melville_moby_dick.txt")
-
+process_ngrams("data/american/test/melville_moby_dick.txt")
 # %%

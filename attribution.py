@@ -20,17 +20,16 @@ Options:
 import sys
 import os
 import math
-from utils import *
+from utils import get_documents, extract_vocab, process_ngrams, process_words, top_cond_probs_by_author
 from docopt import docopt
 
 if __name__ == '__main__':
-    arguments = docopt(__doc__, version='Authorship Attribution 1.1')
-
+    arguments = docopt(__doc__, version='Authorship Attribution 2.1')
 
 # Default values for hyperparameters
 feature_type = "words"
 ngram_size = 5
-testfile = "data/american/test/melville_bartleby.txt"
+testfile = "data/american/test/melville_moby_dick.txt"
 
 if arguments["--words"]:
     feature_type = "words"
@@ -38,7 +37,6 @@ elif arguments["--chars"]:
     feature_type = "chars"
     ngram_size = int(arguments["--chars"])
 testfile = arguments["<filename>"]
-
 
 alpha = 0.0001
 classes = ["Louisa May Alcott", "Emily Dickinson",
@@ -145,5 +143,6 @@ else:
 for author in classes:
     print("\nBest features for",author)
     top_cond_probs_by_author(conditional_probabilities, author, 5)
+    print("\n")
 
 apply_naive_bayes(classes, vocabulary, priors, conditional_probabilities, testfile)
