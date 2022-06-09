@@ -16,6 +16,7 @@ Options:
 
 """
 
+#%%
 # Libraries
 import sys
 import os
@@ -25,7 +26,7 @@ from docopt import docopt
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='Authorship Attribution 2.1')
-
+#%%
 # Default values for hyperparameters
 feature_type = "words"
 ngram_size = 5
@@ -38,11 +39,12 @@ elif arguments["--chars"]:
     ngram_size = int(arguments["--chars"])
 testfile = arguments["<filename>"]
 
+#%%
+
 alpha = 0.0001
-classes = ["Louisa May Alcott", "Emily Dickinson",
-           "F. Scott Fitzgerald", "Nathaniel Hawthorne",
-           "Herman Melville", "Edgar Allan Poe",
-           "Henry David Thoreau", "Mark Twain", "Walt Whitman"]
+import pandas as pd
+authors = pd.read_csv("data/authors_us.csv")
+classes = authors['name']
 #%%
 documents = get_documents(feature_type, ngram_size)
 
