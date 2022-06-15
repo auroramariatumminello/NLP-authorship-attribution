@@ -1,3 +1,4 @@
 nltk==3.6.5
 docopt==0.6.2
 stop_words==2018.7.23
+sklearn

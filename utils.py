@@ -12,7 +12,6 @@ from sklearn.tree import DecisionTreeClassifier
 
 # Train test split
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import cross_val_score
 from random import randint
 
 # Utility
@@ -359,10 +358,11 @@ def predict_authors(test_files, author_dict, vectorizer, classifier, prob=False)
         y_pred.append(predict_author(test_file, author_dict, vectorizer, classifier, probabilities=prob))
     return y_pred
     
+    
+    
 ##########################################
 # Prediction utilities
 ##########################################
-
 
 def predict_top_3_authors(test_file, author_dict, vectorizer, classifier, is_path=False):
     from tabulate import tabulate
@@ -422,6 +422,9 @@ def prediction_heatmap(X_test, y_test, author_dict, vectorizer, classifier):
     return df
 
 def convert_label_to_complete_name(label: list, authors_info = AUTHORS_INFORMATION_PATH):
+    '''
+    Given a list of labels and the path to the csv with authors' information
+    '''
     authors = pd.read_csv(authors_info)
     return [authors.loc[authors['label']==l].iloc[0,0] for l in label]
     
