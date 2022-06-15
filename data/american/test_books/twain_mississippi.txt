@@ -18,8 +18,7 @@ Language: English
 
 Character set encoding: UTF-8
 
-*** START OF THIS PROJECT GUTENBERG EBOOK LIFE ON THE MISSISSIPPI,
-COMPLETE ***
+*** START OF THIS PROJECT GUTENBERG EBOOK LIFE ON THE MISSISSIPPI,COMPLETE ***
 
 Produced by David Widger. Earliest PG text edition produced by Graham
 Allan

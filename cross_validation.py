@@ -1,4 +1,3 @@
-
 ################################################
 # K-FOLD CROSS VALIDATION 
 # WITH ALL THE PROPOSED MODELS
@@ -9,9 +8,8 @@ from sklearn.model_selection import KFold, LeaveOneOut, cross_val_score
 from termcolor import colored
 
 warnings.filterwarnings("ignore")
-# Cross validation
 
-#%%
+
 #########################################
 # Preparing data for the cross validation
 #########################################
@@ -55,12 +53,8 @@ for model in tqdm(models):
     for fold_idx, accuracy in enumerate(accuracies):
         entries.append((model_name, fold_idx, accuracy))
 cv_df = pd.DataFrame(entries, columns=["model_name", "fold_idx", "accuracy"])
-#%%
+
+# Mean results
 cv_df.groupby(["model_name"]).mean().sort_values("accuracy", ascending=False) 
+# Median results
 cv_df.groupby(["model_name"]).median().sort_values("accuracy", ascending=False)
-cv_df.head(30)
-# Results suggest to use Multinomial NB or Logistic regression.
-# What if we insert also authors features? What if we augment the number of
-# ngrams to consider? or if we preprocess the text? We may lose the personalization
-# of authors...
-#%%

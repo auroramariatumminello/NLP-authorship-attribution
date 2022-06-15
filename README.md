@@ -1,4 +1,4 @@
-# Authorship attribution
+# 📚 Authorship attribution
 
 
 This repository shows how it is possible to discover the author of a text book, given a list of authors among which we can choose. It may be resused for plagiarism detection or to discover the author of messages, by changing the list of authors and the directory with txt documents necessary for the training phase. 
@@ -13,36 +13,60 @@ It is suggested to create a
 
 To run the code, type:
 
-    python3 attribution.py --words data/emma.txt
+    python attribution.py 
 
-Or alternatively:
+You can also switch to the Russian literature (or your personal folder):
 
-    python3 attribution.py --chars 3 data/emma.txt
+    python attribution.py --training_path data/russian/ --test_file data/russian/test_books/dostoevsky_white_nights.txt
 
-The first alternative computes a model over words, as we saw in class. The second alternative uses character ngrams of the size given to the system.
+By adding --prob flag at the end, you can obtain:
 
-The output of the code tells you which operations the classifier is currently performing: computing prior probabilities, conditional probabilities, etc. Then, for illustration, it outputs the 10 features with highest conditional probability for the class under consideration (i.e. for each author). It gives you an idea of which words / ngrams are most important for each author. Finally, you get sorted log figures for the probability of each class. The first entry in that list is the author guessed by the system.
+* a dataframe with the probabilities per each author to have written a book, if you do not specify a test file;
+* if you specify a test file, you will get the ordered list of authors, based on how likely they have written the book you requested. 
 
+Whenever you do not specify a test file, you will only get the accuracy (unless you add --prob). Otherwise, you get the book information (title, author, predicted author). 
 
-## Exercises
+Also, you can switch from bag of words representation to tfidf by specifying --tfidf. 
 
-* First, read the code and make sure you understand what it does. If it helps you, you can add comments in the file.
-
-* Can you interpret the output? Just looking at the most frequent words/ngrams, what do you notice about the similarities and differences between authors?
-
-* Change parameters and see what happens! What do you get with longer ngrams? What happens if you modify the smoothing parameter alpha?
-
-
-## Write up your experiments
-
-Write a little report of what you've done (this is just practice for the exam!) Your report should contain the following sections:
-
-* Description of the task
-* Your hypothesis: it could be anything you like. You can keep it simple. For instance, you might posit that the system will not work so well anymore if you choose very long char ngrams (it will overfit to the particular book in the training set and not generalise to the test book).
-* The experiments you ran: which parameters did you change? did you modify the system? Explain everything you did in detail.
-* Results: write a little table showing your results and discuss it with respect to your hypothesis. Was it confirmed or disproved?
 
 
 ## Open-ended project
 
 For those who want to go further... The opposite of authorship attribution is obfuscation. You are Jane Austen and you don't want to have your texts identify you. What can you do to prevent this? Try out different methods and see if you can fool the system.
+
+## Results
+
+Leave One Out Mean Accuracies
+
+Note that in case of the DecisionTreeClassifier performance are comparable with a random model that assigns a book to a random author (1/number of authors).
+
+
+| **model_name**         | **accuracy** |
+|------------------------|--------------|
+| MultinomialNB          | 0.911111     |
+| LinearSVC              | 0.877778     |
+| LogisticRegression     | 0.844444     |
+| RandomForestClassifier | 0.633333     |
+| DecisionTreeClassifier | 0.077778     |
+
+K fold with 5 splits
+
+(mean)
+
+| **model_name**         | **accuracy** |
+|------------------------|--------------|
+| LogisticRegression     | 0.844444     |
+| MultinomialNB          | 0.811111     |
+| LinearSVC              | 0.800000     |
+| RandomForestClassifier | 0.577778     |
+| DecisionTreeClassifier | 0.122222     |
+
+(median)
+
+| **model_name**         | **accuracy** |
+|------------------------|--------------|
+| MultinomialNB          | 0.833333     |
+| LinearSVC              | 0.777778     |
+| LogisticRegression     | 0.777778     |
+| RandomForestClassifier | 0.555556     |
+| DecisionTreeClassifier | 0.111111     |

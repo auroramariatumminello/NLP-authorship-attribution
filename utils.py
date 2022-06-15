@@ -30,10 +30,11 @@ import nltk
 from nltk.stem.snowball import SnowballStemmer
 
 stemmer = SnowballStemmer("english")
-STOP_WORDS = set(nltk.corpus.stopwords.words("english"))
+STOP_WORDS: list = set(nltk.corpus.stopwords.words("english"))
+vectorizer_type: str = 'bow'
 
 # List of models within which we can choose for multiclassification
-models = {
+models: dict = {
     "MultinomialNB": MultinomialNB(),
     "RandomForest": RandomForestClassifier(n_estimators=100, max_depth=5),
     "DecisionTree": DecisionTreeClassifier(max_depth=2),
@@ -42,16 +43,15 @@ models = {
 }
 
 # CONSTANTS
-MODEL_NAME = "MultinomialNB"
-TEXT_PATH = "data/american"
-AUTHORS_INFORMATION_PATH = "data/american/authors.csv"
+MODEL_NAME: str = "MultinomialNB"
+TEXT_PATH: str = "data/american"
+AUTHORS_INFORMATION_PATH: str = "data/american/authors.csv"
 RANDOM_STATE = randint(0, 1000)
-
 
 ##########################################
 # PHASE 1: Text and authors reading
 ##########################################
-def load_texts(training_path: str = TEXT_PATH):
+def load_texts(to_exclude, training_path: str = TEXT_PATH):
     """
     Given a training path, whose default is the TEXT_PATH variable,
     it searches for all txt files inside the specified path and returns
@@ -59,6 +59,7 @@ def load_texts(training_path: str = TEXT_PATH):
 
         Parameters:
             training_path (str): path from which the function will get txt files' paths
+            to_exclude (str): path of a file to exclude, because chosen as test file
 
         Returns:
             files (list): list of file paths inside the specified folder
@@ -69,11 +70,12 @@ def load_texts(training_path: str = TEXT_PATH):
         for f in os.listdir(training_path)
         if os.path.isfile(os.path.join(training_path, f))
     ]
-    files = [f for f in files if f.endswith(".txt")]
+    to_exclude = "_-_-_" if to_exclude is None else to_exclude
+    files = [f for f in files if f.endswith(".txt") and to_exclude not in f]
     return files
 
 
-def get_authors_and_texts(training_path: str = TEXT_PATH):
+def get_authors_and_texts(training_path: str = TEXT_PATH, to_exclude = "_-_-_"):
     """
     Given the training path, whose default value is TEXT_PATH,
     the function loads texts paths and for each file path it
@@ -82,12 +84,14 @@ def get_authors_and_texts(training_path: str = TEXT_PATH):
 
         Parameters:
             training_path (str): folder from which the function reads the texts
+            to_exclude (str): path of a file to exclude, because chosen as test file
+
 
         Returns:
             texts (list): corpus of all the books found in the training path
             authors (list): associated authors of the texts
     """
-    files = load_texts(training_path)
+    files = load_texts(to_exclude, training_path)
     # Save the author of each document and the document's text
     texts = []
     authors = []
@@ -95,7 +99,7 @@ def get_authors_and_texts(training_path: str = TEXT_PATH):
         authors.append(name.split("\\")[-1].split("_")[0])
         f = open(name, "r", encoding="utf-8", errors="replace")
         texts.append(f.read())
-    texts = [remove_heading(text) for text in texts]
+    texts = [remove_heading(text)[-1] for text in texts]
     return texts, authors
 
 
@@ -114,14 +118,15 @@ def remove_heading(text: str):
             author, title (str:Optional): metadata extracted from the heading
     """
     try:
-        heading, text = re.split("\*{3} START OF .* \*{3}", text)
-        # title, heading = heading.split("Title: ")[-1].split("Author: ")
-        # author = heading.split("\n")[0]
-        text = text.split("*** END")[0]
+        heading, text = re.split("\*{3}\s?START OF .*\*{3}", text)
+        title, heading = heading.split("Title: ")[-1].split("Author: ")
+        author = heading.split("\n")[0]
+        text = re.split("\*{3}\s?END.*\*{3}", text)[0]
+        return title.strip(), author.strip(), text
+
     except:
         print("No heading apparently..")
-        print(text[:600])
-    return text
+        return text
 
 
 ##########################################
@@ -188,8 +193,6 @@ def create_labels_vector(authors, authors_information_path=AUTHORS_INFORMATION_P
 # PHASE 4: Text representation
 # Choose your fighter! Bag of words or tfidf
 ##########################################
-
-
 def preprocessing(text):
     '''
     Function to pass as tokenizer inside the vectorizer
@@ -220,13 +223,13 @@ def generate_text_vectors(texts,vectorizer='bow', ngrams_max=4):
             vectors (sparse matrix): (sparse) matricial representation of the texts
     
     '''
-    if vectorizer == "bow":
-        vectorizer = CountVectorizer()
-    else:
+    if vectorizer == "tfidf":
         vectorizer = TfidfVectorizer(min_df=5,
                                      ngram_range=(1,ngrams_max), 
                                      tokenizer=preprocessing,
                                      stop_words=STOP_WORDS)
+    else:
+        vectorizer = CountVectorizer()
     vectors = vectorizer.fit_transform(texts)
     return vectorizer, vectors
 
@@ -264,7 +267,7 @@ def create_and_fit_model(vectors, classes, model="MultinomialNB"):
 ##########################################
 # PHASE 6: Predictions
 ##########################################
-def predict_author_from_test_path(test_file, author_dict, vectorizer, classifier):
+def predict_author_from_test_path(test_file, author_dict, vectorizer, classifier, probabilities=False):
     '''
     Given a test file path, the function reads it and transforms it into its
     vectorial form through the vectorizer. Then it predicts its author through
@@ -276,15 +279,30 @@ def predict_author_from_test_path(test_file, author_dict, vectorizer, classifier
             author_dict (dict): dictionary to map numbers to authors' labels
             vectorizer (CountVectorizer or TfidfVectorizer)
             classifier (model): model chosen among the list of models 
+            probabilities (bool): chooses if returning the single author or the list of
+                                    probabilities per author
         
         Returns: 
-            author (str): Author of the chosen text 
+            author (str): Real Author of the chosen text 
+            title (str): Title of the book extracted from the text file
+            test_text (str): Text book
+            author_pred (str): Predicted Author of the chosen text 
+            
     '''
     with open(test_file, "r", errors="replace", encoding="utf-8") as f:
         test_text = f.read()
+    title, author, test_text = remove_heading(test_text)
     mystery_vector = vectorizer.transform([test_text])
+    
+    if probabilities:
+        try:
+            predictions = classifier.predict_proba(mystery_vector).tolist()
+            predictions = [y for x in predictions for y in x]
+            return author, title, predictions
+        except:
+            print("The model has no predict_proba method")    
     predictions = classifier.predict(mystery_vector)
-    return author_dict[int(predictions)]
+    return author, title, test_text, author_dict[int(predictions)]
 
 
 def predict_author(test_text, author_dict, vectorizer, classifier, probabilities=False):
@@ -309,14 +327,15 @@ def predict_author(test_text, author_dict, vectorizer, classifier, probabilities
             predictions (list): list of probabilities, ordered by author's label
     '''
     mystery_vector = vectorizer.transform([test_text])
-    # predict author's label
     if probabilities:
-        predictions = classifier.predict_proba(mystery_vector).tolist()
-        predictions = [y for x in predictions for y in x]
-        return predictions
-    else:
-        predictions = classifier.predict(mystery_vector)
-        return author_dict[int(predictions)]
+        try:
+            predictions = classifier.predict_proba(mystery_vector).tolist()
+            predictions = [y for x in predictions for y in x]
+            return predictions
+        except:
+            print("The model has no predict_proba method")    
+    predictions = classifier.predict(mystery_vector)
+    return author_dict[int(predictions)]
 
 
 def predict_authors(test_files, author_dict, vectorizer, classifier, prob=False):
@@ -331,16 +350,33 @@ def predict_authors(test_files, author_dict, vectorizer, classifier, prob=False)
             classifier (model): model chosen among the list of models 
             prob (bool): if false, returns a list of authors, a list of probabilities
                         per author otherwise
+                        
+        Returns: 
+            y_pred (list): list of authors associated to the test files in input
     '''
     y_pred = []
     for test_file in test_files:
         y_pred.append(predict_author(test_file, author_dict, vectorizer, classifier, probabilities=prob))
     return y_pred
-
-
+    
 ##########################################
 # Prediction utilities
 ##########################################
+
+
+def predict_top_3_authors(test_file, author_dict, vectorizer, classifier, is_path=False):
+    from tabulate import tabulate
+    if is_path:
+        preds = predict_author_from_test_path(test_file, author_dict, vectorizer, classifier, probabilities=True)[-1]
+    else:
+        preds = predict_author(test_file, author_dict, vectorizer, classifier, probabilities=True)
+    preds = sorted(zip(preds, author_dict.values()), reverse=True)
+    results = [[x[1],x[0]] for x in preds if x[0]>0]
+    message = "Authors that most likely have written the requested book:\n"
+    message += tabulate(results, headers=['Author','Probability'])
+    return preds, message
+
+
 
 def get_results_df(X_test, y_test, author_dict, vectorizer, classifier):
     preds = predict_authors(X_test, author_dict, vectorizer, classifier, prob=True)
@@ -362,7 +398,7 @@ def get_results_df(X_test, y_test, author_dict, vectorizer, classifier):
         | (df["real_author"] == df["author_2"])
         | (df["real_author"] == df["author_3"])
     )
-    return df
+    return df.sort_values(['real_author'])
 
 
 def compute_accuracy(y, pred):
@@ -370,8 +406,8 @@ def compute_accuracy(y, pred):
 
 def prediction_heatmap(X_test, y_test, author_dict, vectorizer, classifier):
     df = get_results_df(X_test, y_test, author_dict, vectorizer, classifier)
-    print("Accuracy top 1: "+str(round(compute_accuracy(df["real_author"], df["author_1"])),2))
-    print("Accuracy top 3: "+str(round(sum(df["is_in_top3"])/len(df)),2))
+    print("Accuracy top 1: "+str(round(compute_accuracy(df["real_author"], df["author_1"]),2)))
+    print("Accuracy top 3: "+str(round(sum(df["is_in_top3"] == True)/len(df),2)))
 
     # Heatmap to compare authors similarity
     df_heatmap = df.set_index("real_author").drop(
@@ -384,3 +420,8 @@ def prediction_heatmap(X_test, y_test, author_dict, vectorizer, classifier):
     plt.show()
     
     return df
+
+def convert_label_to_complete_name(label: list, authors_info = AUTHORS_INFORMATION_PATH):
+    authors = pd.read_csv(authors_info)
+    return [authors.loc[authors['label']==l].iloc[0,0] for l in label]
+    
