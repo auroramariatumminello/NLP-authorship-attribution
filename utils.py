@@ -1,127 +1,386 @@
 #%%
-import sys
+# Bag of words and tfidf
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+
+# Models
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import LinearSVC
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.tree import DecisionTreeClassifier
+
+# Train test split
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score
+from random import randint
+
+# Utility
 import os
+import pandas as pd
 import re
+import seaborn as sns
+from matplotlib import pyplot as plt
+import seaborn as sns
+import numpy as np
 
-# from stop_words import get_stop_words
-from nltk.corpus import stopwords
 
-# import nltk
-# nltk.download('stopwords')
+# VARIABLES
+import nltk
+from nltk.stem.snowball import SnowballStemmer
 
-# Set of stopwords
-stop_words = list(stopwords.words("english"))  # About 150 stopwords
-DEFAULT_TRAINING_PATH = "data/american/training/"
+stemmer = SnowballStemmer("english")
+STOP_WORDS = set(nltk.corpus.stopwords.words("english"))
 
-# Function to get, for each file inside the training directory, author, length and dictionary with words
-def get_documents(
-    feature_type="words", ngram_size=None, training_path=DEFAULT_TRAINING_PATH
-):
-    documents = {}
-    # Scanning all files inside the training path
+# List of models within which we can choose for multiclassification
+models = {
+    "MultinomialNB": MultinomialNB(),
+    "RandomForest": RandomForestClassifier(n_estimators=100, max_depth=5),
+    "DecisionTree": DecisionTreeClassifier(max_depth=2),
+    "LogisticRegression": LogisticRegression(random_state=0),
+    "LinearSVC": CalibratedClassifierCV(LinearSVC()),
+}
+
+# CONSTANTS
+MODEL_NAME = "MultinomialNB"
+TEXT_PATH = "data/american"
+AUTHORS_INFORMATION_PATH = "data/american/authors.csv"
+RANDOM_STATE = randint(0, 1000)
+
+
+##########################################
+# PHASE 1: Text and authors reading
+##########################################
+def load_texts(training_path: str = TEXT_PATH):
+    """
+    Given a training path, whose default is the TEXT_PATH variable,
+    it searches for all txt files inside the specified path and returns
+    a list with the complete path of all books.
+
+        Parameters:
+            training_path (str): path from which the function will get txt files' paths
+
+        Returns:
+            files (list): list of file paths inside the specified folder
+    """
+    # Load all training files' paths
     files = [
         os.path.join(training_path, f)
         for f in os.listdir(training_path)
         if os.path.isfile(os.path.join(training_path, f))
     ]
-    for f in files:
-        # Processing the document as ngrams (groups of n letters)
-        if feature_type == "chars":
-            author, doc_length, words = process_ngrams(f, ngram_size)
+    files = [f for f in files if f.endswith(".txt")]
+    return files
+
+
+def get_authors_and_texts(training_path: str = TEXT_PATH):
+    """
+    Given the training path, whose default value is TEXT_PATH,
+    the function loads texts paths and for each file path it
+    extracts the author's label from the filename (first string)
+    and the content of the file itself.
+
+        Parameters:
+            training_path (str): folder from which the function reads the texts
+
+        Returns:
+            texts (list): corpus of all the books found in the training path
+            authors (list): associated authors of the texts
+    """
+    files = load_texts(training_path)
+    # Save the author of each document and the document's text
+    texts = []
+    authors = []
+    for name in files:
+        authors.append(name.split("\\")[-1].split("_")[0])
+        f = open(name, "r", encoding="utf-8", errors="replace")
+        texts.append(f.read())
+    texts = [remove_heading(text) for text in texts]
+    return texts, authors
+
+
+def remove_heading(text: str):
+    """
+    Given a text, the function removes the heading and the ending part
+    automatically inserted in every Gutenberg book, delimited by
+    *** START OF...*** and *** END ... ***
+
+        Parameters:
+            text (str): book text
+
+        Returns:
+            text (str): the book text without heading and ending part,
+            with metadata and copyright information (mere book corpus).
+            author, title (str:Optional): metadata extracted from the heading
+    """
+    try:
+        heading, text = re.split("\*{3} START OF .* \*{3}", text)
+        # title, heading = heading.split("Title: ")[-1].split("Author: ")
+        # author = heading.split("\n")[0]
+        text = text.split("*** END")[0]
+    except:
+        print("No heading apparently..")
+        print(text[:600])
+    return text
+
+
+##########################################
+# PHASE 2: Split dataset of books into train and test sets
+##########################################
+def train_test_texts_split(texts: list, authors: list):
+    """
+    Given a list of texts and the list of the associated authors,
+    the function splits the text into training and testing sets,
+    saving the related authors inside y_train and y_test.
+    To avoid an author being only in the training/testing set,
+    the stratify parameter is set on the author itself.
+
+        Parameters:
+            texts (list): list of text books
+            authors (list): list of the authors associated to the texts
+
+        Returns:
+            X_train (list): training set with texts
+            y_train (list): list of the authors of the books in the training set
+            X_test (list): testing set with texts
+            y_test (list): list of the authors of the books in the testing set
+    """
+    df = pd.DataFrame({"text": texts, "author": authors})
+    X_train, X_test, y_train, y_test = train_test_split(
+        df["text"],
+        df["author"],
+        stratify=df.author,
+        test_size=0.3,
+        random_state=RANDOM_STATE,
+    )
+    return X_train, X_test, y_train, y_test
+
+
+##########################################
+# PHASE 3: Association of the author label to the text
+##########################################
+def create_labels_vector(authors, authors_information_path=AUTHORS_INFORMATION_PATH):
+    '''
+    Given the list of authors' labels and the path to the csv
+    with the authors' information, the function will codify the labels
+    as sequential numbers, such that for each author, there's a number (auth_num)
+    and for each number there's an author's label (num_auth).
+    
+        Parameters: 
+            authors (list): list of all the authors associated to texts
+            authors_information_path (str): path to the csv with the relative information about authors
             
-        # Processing the document as words (separated by space)
-        elif feature_type == "words":
-            author, doc_length, words = process_words(f)
-        documents[f] = [author, doc_length, words]
-    return documents
+        Returns:
+            classes (list): mapped list from authors to their match in numbers
+            num_auth (dict): dictionary that maps a number to its author 
+                            (useful during predictions to convert the number to string)
+    '''
+    authors_df = pd.read_csv(authors_information_path)
+    authors_df.label = pd.Categorical(authors_df.label)
+    num_auth = dict(enumerate(authors_df["label"].cat.categories))
+    auth_num = {v: k for k, v in num_auth.items()}
+    #%%
+    classes = [auth_num[author] for author in authors]
+    return classes, num_auth
 
 
-# Extracts the words found in the documents, with duplicates
-def extract_vocab(documents):
-    vocabulary = []
-    for values in documents.values():
-        vocabulary += list(values[2].keys())
-    return vocabulary
+##########################################
+# PHASE 4: Text representation
+# Choose your fighter! Bag of words or tfidf
+##########################################
 
 
-# Saves for each term the conditional probability it belongs to
-# the preferred author and then returns the top n terms
-# with the highest probability
-def top_cond_probs_by_author(conditional_probabilities, author, n):
-    cps = {}
-    for term, probs in conditional_probabilities.items():
-        cps[term] = probs[author]
-    c = 0
-    for term in sorted(cps, key=cps.get, reverse=True):
-        if c < n:
-            print(c, term, "score:", cps[term])
-            c += 1
-        else:
-            break
+def preprocessing(text):
+    '''
+    Function to pass as tokenizer inside the vectorizer
+    
+        Parameters: 
+            text (str)
+            
+        Returns:
+            stems (list): list of words reduced to their root
+    '''
+    tokens = [word for word in nltk.word_tokenize(text)]
+    stems = [stemmer.stem(item) for item in tokens]
+    return stems
 
+def generate_text_vectors(texts,vectorizer='bow', ngrams_max=4):
+    '''
+    Given a list of texts, the function creates a vectorizer, 
+    based on the user preferences, and returns the vectorizer itself,
+    plus the vectorial representation of the texts
+    
+        Parameters:
+            texts (list): list of text corpus 
+            vectorizer (str): if "bow", the text is represented through Bag of Words,
+                                tf-idf otherwise
+        
+        Returns:
+            vectorizer (CountVectorizer or TfidfVectorizer)
+            vectors (sparse matrix): (sparse) matricial representation of the texts
+    
+    '''
+    if vectorizer == "bow":
+        vectorizer = CountVectorizer()
+    else:
+        vectorizer = TfidfVectorizer(min_df=5,
+                                     ngram_range=(1,ngrams_max), 
+                                     tokenizer=preprocessing,
+                                     stop_words=STOP_WORDS)
+    vectors = vectorizer.fit_transform(texts)
+    return vectorizer, vectors
 
 #%%
-# Get author and text of the book with the specified filename
-def get_author_and_text(filename):
-    f = open(filename, "r", encoding="utf-8", errors="replace")
-    c = 0
-    sentences = ""
-    for l in f.readlines():
-        # Get the author's name
-        if l.startswith("Author: "):
-            author = l.split(":")[-1].rstrip().lstrip()
 
-        # Starting the actual text of the book
-        if l.startswith("*** START OF "):
-            c = 1
-            continue
-
-        # Inserting sentences into the string or ending the cycle
-        if c == 1:
-            if l.startswith("*** END OF"):
-                break
-            else:
-                sentences = sentences + l
-
-    # Lower case and removing symbols
-    sentences = re.sub(r"[^a-z\s]", "", sentences.lower())
-    sentences = re.sub(r"[\s]", " ", sentences)
-    sentences = re.sub(" +", " ", sentences)
-    return author, sentences
-
-
-def remove_stopwords(sentence):
-    # Removing stopwords
-    tokens_without_sw = [word for word in sentence.split() if word not in stop_words]
-    return tokens_without_sw
+##########################################
+# PHASE 5: Creation of the model
+##########################################
+def create_and_fit_model(vectors, classes, model="MultinomialNB"):
+    '''
+    Given the vectorial representation of texts and their classes, the 
+    model is created, fitted and then returned. Whenever the specified model
+    is not present in the dictionary, it raises a key error and retries with 
+    the Multinomial Naive Bayes Classifier
+    
+        Parameters: 
+            vectors (sparse matrix): vectorial representation of texts
+            classes (list): numerical label of the associated author
+            model (str): name of the model, to choose among the models'
+                        dictionary inside this document
+                        
+        Returns:
+            classifier (model): returns a fitted classifier 
+    '''
+    try:
+        classifier = models[model]
+    except KeyError:
+        # Classifier
+        classifier = MultinomialNB()
+    # Train the classifier:
+    classifier.fit(vectors, classes)
+    return classifier
 
 
-# Create a dictionary with words as key and their
-# counter of occurrences as value
-def process_words(filename):
-    # Get author and book text
-    author, sentences = get_author_and_text(filename)
-    sentences = remove_stopwords(sentences)
-    words = {}
-    for w in sentences:
-        if w in words:
-            words[w] += 1
-        else:
-            words[w] = 1
-    return author, len(words), words
+##########################################
+# PHASE 6: Predictions
+##########################################
+def predict_author_from_test_path(test_file, author_dict, vectorizer, classifier):
+    '''
+    Given a test file path, the function reads it and transforms it into its
+    vectorial form through the vectorizer. Then it predicts its author through
+    the help of the classifier. In the end, since the prediction is a number,
+    the output of the model is mapped into the author's name. 
+    
+        Parameters:
+            test_file (str): file path
+            author_dict (dict): dictionary to map numbers to authors' labels
+            vectorizer (CountVectorizer or TfidfVectorizer)
+            classifier (model): model chosen among the list of models 
+        
+        Returns: 
+            author (str): Author of the chosen text 
+    '''
+    with open(test_file, "r", errors="replace", encoding="utf-8") as f:
+        test_text = f.read()
+    mystery_vector = vectorizer.transform([test_text])
+    predictions = classifier.predict(mystery_vector)
+    return author_dict[int(predictions)]
 
 
-# Create dictionary of ngrams, where n is inserted by the user, whose
-# keys are ngrams and values are their counter
-def process_ngrams(filename, n=3):
-    # Get author and book text
-    author, sentences = get_author_and_text(filename)
-    sentences = " ".join(remove_stopwords(sentences))
-    ngrams = {}
-    for i in range(len(sentences) - n):
-        ngram = sentences[i : i + n]
-        if ngram in ngrams:
-            ngrams[ngram] += 1
-        else:
-            ngrams[ngram] = 1
-    return author, len(ngrams), ngrams
+def predict_author(test_text, author_dict, vectorizer, classifier, probabilities=False):
+    '''
+    Given a text, the function transforms it into its vectorial form
+    through the vectorizer. Then two different cases are presented:
+    
+    - The model predicts the text author through and since the prediction 
+        is a number, the output of the model is mapped into the author's name. 
+    - If probabilities flag is on, the model predicts, for each author,
+        the probability that he/she has written the selected text.
+    
+        Parameters:
+            test_text (str): text
+            author_dict (dict): dictionary to map numbers to authors' labels
+            vectorizer (CountVectorizer or TfidfVectorizer)
+            classifier (model): model chosen among the list of models 
+        
+        Returns: 
+            author (str): Author of the chosen text 
+            or
+            predictions (list): list of probabilities, ordered by author's label
+    '''
+    mystery_vector = vectorizer.transform([test_text])
+    # predict author's label
+    if probabilities:
+        predictions = classifier.predict_proba(mystery_vector).tolist()
+        predictions = [y for x in predictions for y in x]
+        return predictions
+    else:
+        predictions = classifier.predict(mystery_vector)
+        return author_dict[int(predictions)]
+
+
+def predict_authors(test_files, author_dict, vectorizer, classifier, prob=False):
+    '''
+    Function to predict the author/probabilities per author of a list of texts.
+    It returns a list of authors or a list of probabilities, one item per each text
+    
+        Parameters:
+            test_files (list): multiple texts
+            author_dict (dict): dictionary to map numbers to authors' labels
+            vectorizer (CountVectorizer or TfidfVectorizer)
+            classifier (model): model chosen among the list of models 
+            prob (bool): if false, returns a list of authors, a list of probabilities
+                        per author otherwise
+    '''
+    y_pred = []
+    for test_file in test_files:
+        y_pred.append(predict_author(test_file, author_dict, vectorizer, classifier, probabilities=prob))
+    return y_pred
+
+
+##########################################
+# Prediction utilities
+##########################################
+
+def get_results_df(X_test, y_test, author_dict, vectorizer, classifier):
+    preds = predict_authors(X_test, author_dict, vectorizer, classifier, prob=True)
+    author_preds = [
+        sorted(zip(x, author_dict.values()), reverse=True)[:3] for x in preds
+    ]
+
+    author_preds = [x[-1] for sub in author_preds for x in sub]
+    author_preds = np.reshape(author_preds, (len(X_test), 3))
+    df = pd.DataFrame(preds, columns=author_dict.values())
+    df[["author_1", "author_2", "author_3"]] = author_preds
+    df["real_author"] = list(y_test)
+    # If the author is the first one
+    df["is_right"] = df["real_author"] == df["author_1"]
+
+    # If the author is in the top 3
+    df["is_in_top3"] = (
+        (df["real_author"] == df["author_1"])
+        | (df["real_author"] == df["author_2"])
+        | (df["real_author"] == df["author_3"])
+    )
+    return df
+
+
+def compute_accuracy(y, pred):
+    return round(sum(y == pred) / len(y), 2)
+
+def prediction_heatmap(X_test, y_test, author_dict, vectorizer, classifier):
+    df = get_results_df(X_test, y_test, author_dict, vectorizer, classifier)
+    print("Accuracy top 1: "+str(round(compute_accuracy(df["real_author"], df["author_1"])),2))
+    print("Accuracy top 3: "+str(round(sum(df["is_in_top3"])/len(df)),2))
+
+    # Heatmap to compare authors similarity
+    df_heatmap = df.set_index("real_author").drop(
+        ["author_1", "author_2", "author_3", "is_right", "is_in_top3"], axis=1
+    )
+    df_heatmap = df_heatmap.sort_index()
+
+    plt.figure(figsize=(15, 10))
+    sns.heatmap(df_heatmap, cmap="YlGnBu", linewidths=0.5)
+    plt.show()
+    
+    return df

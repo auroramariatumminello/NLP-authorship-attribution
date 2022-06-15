@@ -1,14 +1,13 @@
-# Authorship attribution tutorial
+# Authorship attribution
 
-This tutorial shows an example use of the Naive Bayes algorithm. The system is trained on five texts by four authors: Austen, Kipling, Carroll and Grahame. It is then required to guess the author of an additional text (which -- spoiler alert -- is Jane Austen's *Emma*).
 
+This repository shows how it is possible to discover the author of a text book, given a list of authors among which we can choose. It may be resused for plagiarism detection or to discover the author of messages, by changing the list of authors and the directory with txt documents necessary for the training phase. 
+
+The model will try to guess the true author of the text you choose (or some random ones the model has never seen taken from the directory of predownloaded books). 
 
 ## Requirements
 
-You'll need the docopt package to run the code from the terminal. If you need to install it on your system, do:
-
-    sudo pip3 install docopt
-
+It is suggested to create a 
 
 ## Run the code
 

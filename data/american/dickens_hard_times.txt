@@ -25,7 +25,7 @@ Language: English
 Character set encoding: UTF-8
 
 
-***START OF THE PROJECT GUTENBERG EBOOK HARD TIMES***
+*** START OF THE PROJECT GUTENBERG EBOOK HARD TIMES ***
 
 
 Transcribed from the 1905 Chapman and Hall edition by David Price, email
