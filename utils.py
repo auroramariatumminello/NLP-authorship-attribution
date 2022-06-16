@@ -149,12 +149,16 @@ def train_test_texts_split(texts: list, authors: list):
             X_test (list): testing set with texts
             y_test (list): list of the authors of the books in the testing set
     """
+    test_size = 0.3
+    if test_size*len(texts)<len(set(authors)):
+        test_size = len(set(authors))/len(texts)
+        
     df = pd.DataFrame({"text": texts, "author": authors})
     X_train, X_test, y_train, y_test = train_test_split(
         df["text"],
         df["author"],
         stratify=df.author,
-        test_size=0.3,
+        test_size=test_size,
         random_state=RANDOM_STATE,
     )
     return X_train, X_test, y_train, y_test
@@ -359,12 +363,27 @@ def predict_authors(test_files, author_dict, vectorizer, classifier, prob=False)
     return y_pred
     
     
-    
 ##########################################
 # Prediction utilities
 ##########################################
-
 def predict_top_3_authors(test_file, author_dict, vectorizer, classifier, is_path=False):
+    '''
+    Given a test file (path or text), the function predicts the 
+    probabilities per author and it returns both the predictions (sorted
+    by most likely) and a message to print in the command prompt
+    
+        Parameters:
+            test_file (str): file path or text
+            author_dict (dict): dictionary to map numbers to authors' labels
+            vectorizer (CountVectorizer or TfidfVectorizer)
+            classifier (model): model chosen among the list of models 
+            is_path (bool): whether the first parameter is a path or a text
+
+        Returns:
+            preds (list of lists): author and associated probability
+            message (str): to print in the prompt
+            
+    '''
     from tabulate import tabulate
     if is_path:
         preds = predict_author_from_test_path(test_file, author_dict, vectorizer, classifier, probabilities=True)[-1]
@@ -379,6 +398,9 @@ def predict_top_3_authors(test_file, author_dict, vectorizer, classifier, is_pat
 
 
 def get_results_df(X_test, y_test, author_dict, vectorizer, classifier):
+    '''
+    
+    '''
     preds = predict_authors(X_test, author_dict, vectorizer, classifier, prob=True)
     author_preds = [
         sorted(zip(x, author_dict.values()), reverse=True)[:3] for x in preds
