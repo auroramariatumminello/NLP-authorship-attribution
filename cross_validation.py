@@ -1,3 +1,4 @@
+#%%
 ################################################
 # K-FOLD CROSS VALIDATION 
 # WITH ALL THE PROPOSED MODELS
@@ -29,6 +30,7 @@ vectorizer, vectors = generate_text_vectors(texts,'bow')
 
 
 # To get n-1 in training set and 1 in test set
+# Note that it requires 30 min to execute
 # cv = LeaveOneOut()
 
 cv = KFold(n_splits=5, shuffle=True, random_state=0)
@@ -53,7 +55,7 @@ for model in tqdm(models):
     for fold_idx, accuracy in enumerate(accuracies):
         entries.append((model_name, fold_idx, accuracy))
 cv_df = pd.DataFrame(entries, columns=["model_name", "fold_idx", "accuracy"])
-
+#%%
 # Mean results
 cv_df.groupby(["model_name"]).mean().sort_values("accuracy", ascending=False) 
 # Median results

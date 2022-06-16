@@ -438,14 +438,23 @@ def prediction_heatmap(X_test, y_test, author_dict, vectorizer, classifier):
     df_heatmap = df_heatmap.sort_index()
 
     plt.figure(figsize=(15, 10))
-    sns.heatmap(df_heatmap, cmap="YlGnBu", linewidths=0.5)
+    cmap = sns.cm.rocket_r
+    sns.heatmap(df_heatmap, cmap="magma_r", linewidths=0.5)
     plt.show()
     
     return df
 
 def convert_label_to_complete_name(label: list, authors_info = AUTHORS_INFORMATION_PATH):
     '''
-    Given a list of labels and the path to the csv with authors' information
+    Given a list of labels and the path to the csv with authors' information,
+    it converts the label into the complete name of the authors
+    
+        Parameters:
+            label (list)
+            authors_info (str): path of csv with authors info
+            
+        Returns:
+            list of complete names of labels
     '''
     authors = pd.read_csv(authors_info)
     return [authors.loc[authors['label']==l].iloc[0,0] for l in label]

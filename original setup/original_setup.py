@@ -30,7 +30,7 @@ if __name__ == '__main__':
 # Default values for hyperparameters
 feature_type = "words"
 ngram_size = 5
-testfile = "data/american/test/melville_moby_dick.txt"
+testfile = "data/american/test_books/hawthorne_dead.txt"
 
 if arguments["--words"]:
     feature_type = "words"
@@ -43,7 +43,7 @@ testfile = arguments["<filename>"]
 
 alpha = 0.0001
 import pandas as pd
-authors = pd.read_csv("data/authors_us.csv")
+authors = pd.read_csv("data/american/authors.csv")
 classes = authors['name']
 #%%
 documents = get_documents(feature_type, ngram_size)
