@@ -1,10 +1,12 @@
 # 📚 Authorship attribution
 
+
+## 🎯 Goal of the project
 This repository shows how it is possible to discover the author of a text book, given a list of authors among which we can choose. It may be resused for plagiarism detection or to discover the author of messages, by changing the list of authors and the directory with txt documents necessary for the training phase. 
 
 The model will try to guess the true author of the text you choose (or some random ones the model has never seen taken from the directory of predownloaded books). 
 
-## Requirements
+## 🤓 Requirements
 
 If you want to execute the code, it is suggested to create a conda environment where to install the [requirements](requirements.txt): 
 
@@ -20,7 +22,7 @@ If you're new to NLTK library, you should also run:
     nltk.download("punkt")
     nltk.download("stopwords")
 
-## Run the code
+## 🐍 Run the code
 
 To run the [main code](attribution.py), type:
 
@@ -44,7 +46,28 @@ Also, you can switch from bag of words representation to tfidf by specifying --t
 You can also test the [Jupyter Notebook](attribution.ipynb), already executed, and change the paths to get your predictions. 
 
 
-## Results
+
+
+
+
+## 📁Structure of the repo
+
+The repository is divided into different folders:
+
+* data, where you can find three different dataset for training ad testing the code (American/British, Russian and Italian literature). Notice that russian and italian folders have few books because of the lack of literature on Gutenberg.
+* images, with some heatmaps that serve as example of the jupyter notebooks and the accuracy of different models;
+* original_setup, which contains the original code (with some improvements) in the repo [Authorship Attribution](https://github.com/ml-for-nlp/authorship-attribution) of Natural Language Processing course at University of Trento.
+
+Additional files can be found in the main directory:
+
+* attribution.ipynb is a notebook that guides you throughout the entire project, allowing you to customize it in a user friendly way;
+* attribution.py is a python script to execute the code from the command line, such that you can request either the accuracy score based on a specific training path or the prediction of a particular test book;
+* utils.py with some utilities function to execute the code;
+* cross_validation.py, necessary in the Results section to choose the best model for this use case;
+* requirements.txt to replicate the same environment to execute the code.
+   
+
+## 🔢 Results
 
 Multiple models are suggested in order to classify a text, but mainly MultinomialNB is used. Why?
 
@@ -80,7 +103,7 @@ The cross validation script also presents a proper K-fold cross validation with 
 
 
 
-## Test your bookshelf
+## 📖 Test your bookshelf
 
 Suppose you want to predict the author of random books from a range of authors you'd like to choose:
 

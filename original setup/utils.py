@@ -7,11 +7,12 @@ import re
 from nltk.corpus import stopwords
 
 # import nltk
+# To execute only the first time
 # nltk.download('stopwords')
 
 # Set of stopwords
 stop_words = list(stopwords.words("english"))  # About 150 stopwords
-DEFAULT_TRAINING_PATH = "data/american/training/"
+DEFAULT_TRAINING_PATH = "../data/american/"
 
 # Function to get, for each file inside the training directory, author, length and dictionary with words
 def get_documents(
@@ -59,18 +60,14 @@ def top_cond_probs_by_author(conditional_probabilities, author, n):
         else:
             break
 
-
 #%%
 # Get author and text of the book with the specified filename
 def get_author_and_text(filename):
     f = open(filename, "r", encoding="utf-8", errors="replace")
     c = 0
     sentences = ""
+    author = filename.split("\\")[-1].split("_")[0].split(DEFAULT_TRAINING_PATH)[-1]
     for l in f.readlines():
-        # Get the author's name
-        if l.startswith("Author: "):
-            author = l.split(":")[-1].rstrip().lstrip()
-
         # Starting the actual text of the book
         if l.startswith("*** START OF "):
             c = 1

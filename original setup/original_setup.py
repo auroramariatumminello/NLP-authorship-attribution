@@ -30,7 +30,7 @@ if __name__ == '__main__':
 # Default values for hyperparameters
 feature_type = "words"
 ngram_size = 5
-testfile = "data/american/test_books/hawthorne_dead.txt"
+testfile = "../data/american/test_books/hawthorne_dead.txt"
 
 if arguments["--words"]:
     feature_type = "words"
@@ -43,10 +43,9 @@ testfile = arguments["<filename>"]
 
 alpha = 0.0001
 import pandas as pd
-authors = pd.read_csv("data/american/authors.csv")
-classes = authors['name']
+authors = pd.read_csv("../data/american/authors.csv")
+classes = authors['label']
 #%%
-documents = get_documents(feature_type, ngram_size)
 
 #%%
 # Counts the number of documents found
@@ -119,32 +118,27 @@ def apply_naive_bayes(classes, priors, conditional_probabilities, test_document)
         
 # Naive Bayes Training
 import pickle
-if not (os.path.isfile("vocabulary.txt") and 
-        os.path.isfile("priors.txt") and
-        os.path.isfile("conditional_probabilities.txt")):
-    # Computing training data
-    print("Computing probabilities...")
-    vocabulary, priors, conditional_probabilities = train_naive_bayes(classes, documents)
 
-    # Saving training results
-    voc = open('vocabulary.txt', 'wb')
-    pri = open('priors.txt', 'wb')
-    cond = open('conditional_probabilities.txt', 'wb')
-    pickle.dump(vocabulary, voc)
-    pickle.dump(priors, pri)
-    pickle.dump(conditional_probabilities, cond)
-else:
-    print("Importing data...")
-    with open('vocabulary.txt', 'rb') as f:
-        vocabulary = pickle.load(f)
-    with open('priors.txt', 'rb') as f:
-        priors = pickle.load(f)
-    with open('conditional_probabilities.txt', 'rb') as f:
-        conditional_probabilities = pickle.load(f)
-        
-for author in classes:
-    print("\nBest features for",author)
-    top_cond_probs_by_author(conditional_probabilities, author, 5)
-    print("\n")
+# Reading documents
+print("***\nReading documents...\n***")
+documents = get_documents(feature_type, ngram_size)
+# Computing training data
+print("***\nComputing probabilities...\n***\n")
+vocabulary, priors, conditional_probabilities = train_naive_bayes(classes, documents)
 
-apply_naive_bayes(classes, vocabulary, priors, conditional_probabilities, testfile)
+# Saving training results
+voc = 'vocabulary.txt'
+pri = 'priors.txt'
+cond = 'conditional_probabilities.txt'
+pickle.dump(vocabulary, open(voc, 'wb'))
+pickle.dump(priors, open(pri, 'wb'))
+pickle.dump(conditional_probabilities, open(cond, 'wb'))
+
+# print("***\nBest features for each author...\n***\n")
+# for author in classes:
+#     print("\nBest features for",author)
+#     top_cond_probs_by_author(conditional_probabilities, author, 5)
+#     print("\n")
+
+print("***\nNaive Bayes Classifier...\n***\n")
+apply_naive_bayes(classes, priors, conditional_probabilities, testfile)
